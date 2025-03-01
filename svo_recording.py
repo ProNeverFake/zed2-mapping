@@ -49,6 +49,7 @@ Use Ctrl-C to stop the recording.
 import sys
 import pyzed.sl as sl
 from signal import signal, SIGINT
+import ipdb
 
 cam = sl.Camera()
 
@@ -65,7 +66,9 @@ def main():
         exit(1)
 
     init = sl.InitParameters()
-    init.camera_resolution = sl.RESOLUTION.HD720
+    # init.camera_resolution = sl.RESOLUTION.HD720 # * changed to lossless
+    # ipdb.set_trace()
+    init.camera_resolution = sl.RESOLUTION.HD2K
     init.coordinate_system = sl.COORDINATE_SYSTEM.RIGHT_HANDED_Z_UP  # Use ROS-style coordinate system
     init.depth_mode = sl.DEPTH_MODE.NONE
 
@@ -75,7 +78,7 @@ def main():
         exit(1)
 
     path_output = sys.argv[1]
-    recording_param = sl.RecordingParameters(path_output, sl.SVO_COMPRESSION_MODE.H264)
+    recording_param = sl.RecordingParameters(path_output, sl.SVO_COMPRESSION_MODE.LOSSLESS) # ! use lossless
     err = cam.enable_recording(recording_param)
     if err != sl.ERROR_CODE.SUCCESS:
         print(repr(status))

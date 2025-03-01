@@ -34,7 +34,7 @@ class ZedDataProcessor(object):
         # Initialize spatial mapping
         mapping_parameters = sl.SpatialMappingParameters()
         mapping_parameters.map_type = sl.SPATIAL_MAP_TYPE.FUSED_POINT_CLOUD
-        mapping_parameters.resolution_meter = mapping_parameters.get_resolution_preset(sl.MAPPING_RESOLUTION.MEDIUM)
+        mapping_parameters.resolution_meter = mapping_parameters.get_resolution_preset(sl.MAPPING_RESOLUTION.HIGH) # * resolution set to high!
 
         # Map at short range to maximize quality
         # This should reduce errors like points in the sky
@@ -139,6 +139,15 @@ class ZedDataProcessor(object):
         colors_filename = Path(pcd_output_directory) / ("%d_colors.bin" % image_index)
         points.tofile(points_filename)
         colors.tofile(colors_filename)
+        
+    def write_depth_image(self, depth_directory, image_index):
+        # import ipdb; ipdb.set_trace()
+        zed = self.zed
+        depth_image = sl.Mat()
+        zed.retrieve_measure(depth_image, sl.MEASURE.DEPTH)
+
+        # Write depth image as numpy array to preserve float32 values (distance in meters)
+        np.save(Path(depth_directory) / ("%d.npy" % image_index), depth_image.get_data())
 
 
 
@@ -170,7 +179,9 @@ class ZedDataProcessor(object):
 
     def write_calib(self, calib_file_path="calib.yaml"):
         zed = self.zed
-        calib = zed.get_camera_information().calibration_parameters
+        # import ipdb; ipdb.set_trace()
+        # calib = zed.get_camera_information().calibration_parameters
+        calib = zed.get_camera_information().camera_configuration.calibration_parameters
         fx = calib.left_cam.fx
         fy = calib.left_cam.fy
         cx = calib.left_cam.cx
@@ -184,7 +195,7 @@ class ZedDataProcessor(object):
             yaml.dump(yaml_dict, yaml_file)
 
 
-def process_video_file(input_path, output_directory, verbose=False, n_frames_skip=0):
+def process_video_file(input_path, output_directory, verbose=False, n_frames_skip = 0):
     output_directory = Path(output_directory)
     if not os.path.exists(output_directory):
         Path.mkdir(output_directory, parents=True)
@@ -198,7 +209,9 @@ def process_video_file(input_path, output_directory, verbose=False, n_frames_ski
     init_parameters = sl.InitParameters()
     init_parameters.set_from_svo_file(input_path)
 
-    init_parameters.camera_resolution = sl.RESOLUTION.HD720  # Use HD720 video mode (default fps: 60)
+    # init_parameters.camera_resolution = sl.RESOLUTION.HD720  # Use HD720 video mode (default fps: 60)
+    # * use HD2K mode for higher quality
+    init_parameters.camera_resolution = sl.RESOLUTION.HD2K
     init_parameters.depth_mode = sl.DEPTH_MODE.ULTRA
     init_parameters.coordinate_system = sl.COORDINATE_SYSTEM.IMAGE # Use ROS-style coordinate system
     init_parameters.coordinate_units = sl.UNIT.METER  # Set units in meters
@@ -242,10 +255,14 @@ def process_video_file(input_path, output_directory, verbose=False, n_frames_ski
             # svo_position = zed.get_svo_position()
 
             # TO DO: PROCESS FRAME HERE
-            zed_data.save_pose()
-            zed_data.write_rgb_image(rgb_directory=rgb_directory, image_index=count)
+            # * currently disabled
+            # zed_data.save_pose()
+            # zed_data.write_depth_image(depth_directory, image_index=count)
+            # zed_data.write_rgb_image(rgb_directory=rgb_directory, image_index=count)
+            
             # tracking.write_point_cloud_npz(pcd_output_directory, image_index=count)
-            zed_data.write_point_cloud_binary(pcd_output_directory, image_index=count)
+            
+            # zed_data.write_point_cloud_binary(pcd_output_directory, image_index=count)
 
             count += 1
 
@@ -254,9 +271,10 @@ def process_video_file(input_path, output_directory, verbose=False, n_frames_ski
             exit = True
 
     # Write outputs
-    zed_data.write_poses(str(poses_output_path))
+    # * currently disabled
+    # zed_data.write_poses(str(poses_output_path))
     zed_data.write_map(str(map_output_path))
-    zed_data.write_calib(str(calib_output_path))
+    # zed_data.write_calib(str(calib_output_path))
 
 
 def zed_rgba_to_color_array(rgba_values):
